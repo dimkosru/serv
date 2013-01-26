@@ -11,10 +11,10 @@
 
 #include "queue.h"
 
-#define THC 5
+#define THC 2
 #define PORT 1777
 #define BUF_SIZE 512
-sem_t queue_sem;
+sem_t queue_sem, thread_sem;
 pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
 struct Queue *queue;
 
@@ -24,6 +24,7 @@ void my_get(char *filename, int sock);
 int main() {
     int sock, listener;
     sem_init(&queue_sem, 0, 0);
+    sem_init(&thread_sem, 0, THC);
     struct sockaddr_in addr;
     queue = new_queue();
 
@@ -47,12 +48,13 @@ int main() {
         exit(2);
     }
     printf("THC=%d \n", THC, fflush);
-    printf("SOMAXCONN=%d \n", 1, fflush);
+    printf("SOMAXCONN=%d \n", THC, fflush);
 
-    listen(listener, 1);
+    listen(listener, THC);
     int ci = 1;
     int norm = 1;
     while (1) {
+        sem_wait(&thread_sem);
         sock = accept(listener, NULL, NULL);
         if (sock < 0) {
             perror("accept");
@@ -89,6 +91,7 @@ void *performance() {
         close(sock);
         printf("Close sock\n", fflush);
         sleep(2);
+        sem_post(&thread_sem);
     }
 }
 
